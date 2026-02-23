@@ -1,0 +1,16 @@
+sources:
+  - name: met_teens_free_workshops
+    base_url: https://www.metmuseum.org/events?audience=teens&price=free&type=workshopsClasses
+    adapter_type: met_events_filtered
+    crawl_frequency: daily
+    active: true
+  - name: moma_teens
+    base_url: https://www.moma.org/calendar/?happening_filter=For+teens&date=2026-02-24
+    adapter_type: moma_calendar_audience
+    crawl_frequency: daily
+    active: true
+  - name: moma_kids
+    base_url: https://www.moma.org/calendar/?happening_filter=For+kids&date=2026-02-24
+    adapter_type: moma_calendar_audience
+    crawl_frequency: daily
+    active: true
