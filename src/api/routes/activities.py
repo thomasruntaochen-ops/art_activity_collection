@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from src.db.session import get_db
-from src.schemas.activity import ActivityRead
-from src.services.activity_service import get_filter_suggestions, list_activities
+from src.schemas.activity import ActivityFilterOptions, ActivityRead
+from src.services.activity_service import get_filter_options, get_filter_suggestions, list_activities
 
 router = APIRouter(tags=["activities"])
 
@@ -71,3 +71,15 @@ def get_activity_suggestions(
     db: Session = Depends(get_db),
 ) -> list[str]:
     return get_filter_suggestions(db, field=field, query=q, limit=limit)
+
+
+@router.get("/activities/filter-options", response_model=ActivityFilterOptions)
+def get_activity_filter_options(
+    db: Session = Depends(get_db),
+) -> ActivityFilterOptions:
+    options = get_filter_options(db)
+    return ActivityFilterOptions(
+        venues=options["venues"],
+        states=options["states"],
+        cities=options["cities"],
+    )

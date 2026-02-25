@@ -13,8 +13,8 @@ from src.crawlers.adapters.base import BaseSourceAdapter
 from src.crawlers.extractors.filters import is_irrelevant_item_text
 from src.crawlers.pipeline.types import ExtractedActivity
 
-MOMA_TEENS_CALENDAR_URL = "https://www.moma.org/calendar/?happening_filter=For+teens&date=2026-02-24"
-MOMA_KIDS_CALENDAR_URL = "https://www.moma.org/calendar/?happening_filter=For+kids&date=2026-02-24"
+MOMA_TEENS_CALENDAR_URL = "https://www.moma.org/calendar/?happening_filter=For+teens"
+MOMA_KIDS_CALENDAR_URL = "https://www.moma.org/calendar/?happening_filter=For+kids"
 
 NY_TIMEZONE = "America/New_York"
 MOMA_VENUE_NAME = "MoMA"

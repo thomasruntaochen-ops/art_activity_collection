@@ -14,8 +14,7 @@ mamba install ipympl
 mamba install plotly
 #mamba install kaleido
 mamba install scikit-image
-mamba install fastapi uvicorn sqlalchemy pydantic pydantic-settings pymysql httpx beautifu
-lsoup4 playwright tenacity openai pytest ruff
+mamba install fastapi uvicorn sqlalchemy pydantic pydantic-settings pymysql httpx beautifulsoup4 playwright tenacity openai pytest ruff
 
 ## Install playwright to simulate the browser activity 
 pip install -e .\[crawler\] # run in the Dev/GitHub/art_activity_collection root directory

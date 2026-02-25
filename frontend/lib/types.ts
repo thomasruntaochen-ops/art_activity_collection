@@ -31,3 +31,9 @@ export type ActivityFilters = {
 };
 
 export type SuggestField = "venue" | "city" | "state";
+
+export type ActivityFilterOptions = {
+  venues: string[];
+  states: string[];
+  cities: string[];
+};

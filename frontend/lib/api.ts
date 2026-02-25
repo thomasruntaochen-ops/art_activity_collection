@@ -1,4 +1,4 @@
-import { Activity, ActivityFilters, SuggestField } from "./types";
+import { Activity, ActivityFilterOptions, ActivityFilters, SuggestField } from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
@@ -34,6 +34,15 @@ export async function fetchSuggestions(field: SuggestField, q: string, limit = 8
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Suggestions request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchFilterOptions(): Promise<ActivityFilterOptions> {
+  const url = `${API_BASE_URL}/api/activities/filter-options`;
+  const response = await fetch(url, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Filter options request failed: ${response.status}`);
   }
   return response.json();
 }

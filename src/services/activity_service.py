@@ -96,3 +96,39 @@ def get_filter_suggestions(
         .limit(max(1, min(limit, 20)))
     )
     return [value for value in db.scalars(stmt) if value]
+
+
+def get_filter_options(db: Session) -> dict[str, list[str]]:
+    """Return dropdown option values constrained to current activity data."""
+    base_conditions = (
+        Activity.is_free.is_(True),
+        Activity.status.in_(("active", "needs_review")),
+        Activity.venue_id.is_not(None),
+    )
+
+    venue_stmt = (
+        select(Venue.name)
+        .distinct()
+        .join(Activity, Activity.venue_id == Venue.id)
+        .where(*base_conditions, Venue.name.is_not(None))
+        .order_by(Venue.name.asc())
+    )
+    state_stmt = (
+        select(Venue.state)
+        .distinct()
+        .join(Activity, Activity.venue_id == Venue.id)
+        .where(*base_conditions, Venue.state.is_not(None))
+        .order_by(Venue.state.asc())
+    )
+    city_stmt = (
+        select(Venue.city)
+        .distinct()
+        .join(Activity, Activity.venue_id == Venue.id)
+        .where(*base_conditions, Venue.city.is_not(None))
+        .order_by(Venue.city.asc())
+    )
+
+    venues = [value for value in db.scalars(venue_stmt) if value]
+    states = [value for value in db.scalars(state_stmt) if value]
+    cities = [value for value in db.scalars(city_stmt) if value]
+    return {"venues": venues, "states": states, "cities": cities}

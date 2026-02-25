@@ -32,13 +32,13 @@ Homebrew service:
 Test direct connection: 
     mysql -h 127.0.0.1 -P 3306 -u root -p
 Ensure DB exists and schema is loaded (run in project root):
-    mysql -u root -p -e 'CREATE DATABASE IF NOT EXISTS art_activity_collection;'
-    mysql -u root -p art_activity_collection < db/schema.sql
+    mysql -h 127.0.0.1 -P 3306 -u root -p -e 'CREATE DATABASE IF NOT EXISTS art_activity_collection;'
+    mysql -h 127.0.0.1 -P 3306 -u root -p art_activity_collection < db/schema_latest.sql
   
-4. Apply migration in `db/migrations/001_init.sql`.
-   - If your DB already exists from older schema, also run:
-   - `mysql -u root -p art_activity_collection < db/migrations/002_add_activity_location_text.sql`
-   - `mysql -u root -p art_activity_collection < db/migrations/003_add_venue_indexes.sql`
+4. If you already have an older database and need incremental updates, run migrations in order:
+   - `mysql -h 127.0.0.1 -P 3306 -u root -p art_activity_collection < db/migrations/001_init.sql`
+   - `mysql -h 127.0.0.1 -P 3306 -u root -p art_activity_collection < db/migrations/002_add_activity_location_text.sql`
+   - `mysql -h 127.0.0.1 -P 3306 -u root -p art_activity_collection < db/migrations/003_add_venue_indexes.sql`
 5. Run API:
    - `uvicorn src.main:app --reload`
 6. Run frontend:
@@ -46,6 +46,7 @@ Ensure DB exists and schema is loaded (run in project root):
    - `npm install`
    - `cp .env.local.example .env.local`
    - `npm run dev`
+
 
 ## Current Status
 This scaffold includes:
@@ -74,3 +75,32 @@ This scaffold includes:
   - `python3 scripts/run_moma_parser.py`
 - Parse directly from MoMA URLs and commit to MySQL:
   - `python3 scripts/run_moma_parser.py --commit`
+
+## Whitney Source Parser
+- URL: `https://whitney.org/events?tags[]=courses_and_workshops&tags[]=teen_events`
+- Remove all existing Whitney entries from DB:
+  - `python3 scripts/run_whitney_parser.py --clear`
+- Parse directly from Whitney URL (dry run):
+  - `python3 scripts/run_whitney_parser.py`
+- Parse from saved Whitney HTML (offline):
+  - `python3 scripts/run_whitney_parser.py --input-html data/html/whitney/<file>.html`
+- Parse directly from Whitney URL and commit to MySQL:
+  - `python3 scripts/run_whitney_parser.py --commit`
+
+## MFA Boston Source Parser
+- Pages: `https://www.mfa.org/programs?page=0` through `https://www.mfa.org/programs?page=4`
+- Notes:
+  - Parser filters out guided tour events.
+  - Parser also filters out events marked `tickets no longer available`.
+  - Venue defaults to Boston, MA.
+- Remove all existing MFA entries from DB:
+  - `python3 scripts/run_mfa_parser.py --clear`
+- Parse directly from MFA pages (dry run):
+  - `python3 scripts/run_mfa_parser.py`
+- Parse a custom page range:
+  - `python3 scripts/run_mfa_parser.py --start-page 0 --end-page 4`
+- Parse from saved MFA HTML files (offline):
+  - `python3 scripts/run_mfa_parser.py --input-html-dir data/html/mfa`
+  - expected filenames: `mfa_programs_page_0.html` ... `mfa_programs_page_4.html`
+- Parse directly from MFA pages and commit to MySQL:
+  - `python3 scripts/run_mfa_parser.py --commit`

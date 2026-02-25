@@ -2,15 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ActivityTable } from "../components/activity-table";
-import { fetchActivities, fetchSuggestions } from "../lib/api";
+import { fetchActivities, fetchFilterOptions } from "../lib/api";
 import { Activity } from "../lib/types";
-
-const US_STATES = [
-  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA",
-  "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT",
-  "VA", "WA", "WV", "WI", "WY",
-];
 
 export default function HomePage() {
   const [age, setAge] = useState<string>("");
@@ -23,44 +16,27 @@ export default function HomePage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [venueSuggestions, setVenueSuggestions] = useState<string[]>([]);
-  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [venueOptions, setVenueOptions] = useState<string[]>([]);
+  const [stateOptions, setStateOptions] = useState<string[]>([]);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   const summary = useMemo(() => `Showing ${activities.length} activity rows`, [activities.length]);
 
   useEffect(() => {
-    const normalized = venue.trim();
-    if (!normalized) {
-      setVenueSuggestions([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
+    const loadOptions = async () => {
       try {
-        const suggestions = await fetchSuggestions("venue", normalized);
-        setVenueSuggestions(suggestions);
+        const options = await fetchFilterOptions();
+        setVenueOptions(options.venues);
+        setStateOptions(options.states);
+        setCityOptions(options.cities);
       } catch {
-        setVenueSuggestions([]);
+        setVenueOptions([]);
+        setStateOptions([]);
+        setCityOptions([]);
       }
-    }, 180);
-    return () => clearTimeout(timer);
-  }, [venue]);
-
-  useEffect(() => {
-    const normalized = city.trim();
-    if (!normalized) {
-      setCitySuggestions([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const suggestions = await fetchSuggestions("city", normalized);
-        setCitySuggestions(suggestions);
-      } catch {
-        setCitySuggestions([]);
-      }
-    }, 180);
-    return () => clearTimeout(timer);
-  }, [city]);
+    };
+    loadOptions();
+  }, []);
 
   async function onSearch() {
     setLoading(true);
@@ -87,7 +63,7 @@ export default function HomePage() {
     <main className="container">
       <header>
         <h1>Art Activity Collection</h1>
-        <p>Free kids/teen art activities</p>
+        <p>kids/teen art activities</p>
       </header>
 
       <section className="filters">
@@ -113,39 +89,33 @@ export default function HomePage() {
 
         <label>
           Venue
-          <input
-            type="text"
-            value={venue}
-            onChange={(e) => setVenue(e.target.value)}
-            list="venue-suggestions"
-          />
-          <datalist id="venue-suggestions">
-            {venueSuggestions.map((item) => (
-              <option key={item} value={item} />
+          <select value={venue} onChange={(e) => setVenue(e.target.value)}>
+            <option value="">Any</option>
+            {venueOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <label>
           City
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            list="city-suggestions"
-          />
-          <datalist id="city-suggestions">
-            {citySuggestions.map((item) => (
-              <option key={item} value={item} />
+          <select value={city} onChange={(e) => setCity(e.target.value)}>
+            <option value="">Any</option>
+            {cityOptions.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <label>
           State
           <select value={state} onChange={(e) => setState(e.target.value)}>
             <option value="">Any</option>
-            {US_STATES.map((code) => (
+            {stateOptions.map((code) => (
               <option key={code} value={code}>
                 {code}
               </option>

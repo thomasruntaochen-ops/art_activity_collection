@@ -33,3 +33,9 @@ class ActivityFilter(BaseModel):
     drop_in: bool | None = None
     date_from: datetime | None = None
     date_to: datetime | None = None
+
+
+class ActivityFilterOptions(BaseModel):
+    venues: list[str]
+    states: list[str]
+    cities: list[str]
