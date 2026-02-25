@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Select, and_, case, func, or_, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import Select, case, func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from src.models.activity import Activity, Venue
 
@@ -20,21 +20,23 @@ def list_activities(
         Activity.is_free.is_(True),
         Activity.status.in_(("active", "needs_review")),
     )
-    stmt = stmt.options(joinedload(Activity.venue))
-    stmt = stmt.outerjoin(Venue, Activity.venue_id == Venue.id)
+    stmt = stmt.options(selectinload(Activity.venue))
+    has_venue_filters = bool(venue or city or state)
+    if has_venue_filters:
+        stmt = stmt.join(Venue, Activity.venue_id == Venue.id)
 
     filters = []
     if age is not None:
-        filters.append(and_(Activity.age_min.is_(None) | (Activity.age_min <= age)))
-        filters.append(and_(Activity.age_max.is_(None) | (Activity.age_max >= age)))
+        filters.append(or_(Activity.age_min.is_(None), Activity.age_min <= age))
+        filters.append(or_(Activity.age_max.is_(None), Activity.age_max >= age))
     if drop_in is not None:
         filters.append(Activity.drop_in.is_(drop_in))
     if venue:
-        filters.append(func.lower(Venue.name).like(f"%{venue.lower()}%"))
+        filters.append(Venue.name == venue.strip())
     if city:
-        filters.append(func.lower(Venue.city).like(f"%{city.lower()}%"))
+        filters.append(Venue.city == city.strip())
     if state:
-        filters.append(func.upper(Venue.state) == state.upper())
+        filters.append(Venue.state == state.strip().upper())
     if date_from is not None:
         filters.append(Activity.start_at >= date_from)
     if date_to is not None:

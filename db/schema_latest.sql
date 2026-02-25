@@ -4,6 +4,7 @@
 --   - db/migrations/001_init.sql
 --   - db/migrations/002_add_activity_location_text.sql
 --   - db/migrations/003_add_venue_indexes.sql
+--   - db/migrations/004_add_activity_query_indexes.sql
 
 CREATE TABLE IF NOT EXISTS sources (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS venues (
   website VARCHAR(1024) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_venues_name (name),
+  INDEX idx_venues_name_city_state (name, city, state),
   INDEX idx_venues_city (city),
   INDEX idx_venues_state (state)
 );
@@ -76,9 +77,9 @@ CREATE TABLE IF NOT EXISTS activities (
   CONSTRAINT fk_activities_source FOREIGN KEY (source_id) REFERENCES sources(id),
   CONSTRAINT fk_activities_venue FOREIGN KEY (venue_id) REFERENCES venues(id),
 
-  INDEX idx_activities_start_at (start_at),
-  INDEX idx_activities_status (status),
-  INDEX idx_activities_drop_in (drop_in),
+  INDEX idx_activities_status_start_at (status, start_at),
+  INDEX idx_activities_status_venue (status, venue_id),
+  INDEX idx_activities_source_lookup (source_id, source_url(191), title(191), start_at),
   INDEX idx_activities_source_url (source_url(255))
 );
 

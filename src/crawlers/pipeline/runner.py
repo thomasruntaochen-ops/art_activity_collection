@@ -1,12 +1,14 @@
 from datetime import datetime
 from urllib.parse import urlparse
 
-from sqlalchemy import func, literal, select
+from sqlalchemy import func, literal, select, tuple_
 
 from src.crawlers.pipeline.types import ExtractedActivity
 from src.crawlers.extractors.hardcoded import extract_from_event_page
 from src.db.session import SessionLocal
 from src.models.activity import Activity, FreeVerificationStatus, Source, Venue
+
+_UPSERT_BATCH_SIZE = 500
 
 
 def _to_free_status(value: str) -> FreeVerificationStatus:
@@ -16,37 +18,80 @@ def _to_free_status(value: str) -> FreeVerificationStatus:
         return FreeVerificationStatus.inferred
 
 
-def _resolve_venue(
-    db,
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    trimmed = value.strip()
+    return trimmed or None
+
+
+def _normalize_state(value: str | None) -> str | None:
+    text = _normalize_optional_text(value)
+    return text.upper() if text is not None else None
+
+
+def _venue_key_for(
     venue_name: str | None,
     location_text: str | None,
     city: str | None,
     state: str | None,
-) -> Venue | None:
-    if not venue_name and not location_text:
+) -> tuple[str, str | None, str | None] | None:
+    normalized_name = _normalize_optional_text(venue_name)
+    normalized_location = _normalize_optional_text(location_text)
+    normalized_city = _normalize_optional_text(city)
+    normalized_state = _normalize_state(state)
+    if not normalized_name and not normalized_location:
         return None
+    return (normalized_name or "Unknown Venue", normalized_city, normalized_state)
 
-    normalized_name = venue_name or "Unknown Venue"
-    existing = db.scalar(
-        select(Venue).where(
-            Venue.name == normalized_name,
-            Venue.city == city,
-            Venue.state == state,
+
+def _chunked(values: list[tuple], size: int) -> list[list[tuple]]:
+    return [values[i : i + size] for i in range(0, len(values), size)]
+
+
+def _resolve_venues(db, extracted: list[ExtractedActivity]) -> dict[tuple[str, str | None, str | None], Venue]:
+    desired_venues: dict[tuple[str, str | None, str | None], str | None] = {}
+    for item in extracted:
+        venue_key = _venue_key_for(item.venue_name, item.location_text, item.city, item.state)
+        if venue_key is None:
+            continue
+        address = _normalize_optional_text(item.location_text)
+        if venue_key not in desired_venues or desired_venues[venue_key] is None:
+            desired_venues[venue_key] = address
+
+    if not desired_venues:
+        return {}
+
+    venue_names = list({key[0] for key in desired_venues})
+    existing_venues: list[Venue] = []
+    for names_chunk in _chunked([(name,) for name in venue_names], _UPSERT_BATCH_SIZE):
+        names = [item[0] for item in names_chunk]
+        existing_venues.extend(db.scalars(select(Venue).where(Venue.name.in_(names))).all())
+
+    venues_by_key: dict[tuple[str, str | None, str | None], Venue] = {
+        (venue.name, _normalize_optional_text(venue.city), _normalize_state(venue.state)): venue
+        for venue in existing_venues
+    }
+
+    new_venues: list[Venue] = []
+    for key, address in desired_venues.items():
+        if key in venues_by_key:
+            continue
+        venue = Venue(
+            name=key[0],
+            address=address,
+            city=key[1],
+            state=key[2],
+            website=None,
         )
-    )
-    if existing is not None:
-        return existing
+        new_venues.append(venue)
+        venues_by_key[key] = venue
 
-    venue = Venue(
-        name=normalized_name,
-        address=location_text,
-        city=city,
-        state=state,
-        website=None,
-    )
-    db.add(venue)
-    db.flush()
-    return venue
+    if new_venues:
+        db.add_all(new_venues)
+        db.flush()
+
+    return venues_by_key
 
 
 def upsert_extracted_activities(
@@ -56,7 +101,7 @@ def upsert_extracted_activities(
     adapter_type: str = "static_html",
 ) -> list[ExtractedActivity]:
     """Upsert extracted activity rows and return the deduplicated inputs."""
-    deduped = list({(a.source_url, a.title, a.start_at, a.end_at): a for a in extracted}.values())
+    deduped = list({(a.source_url, a.title, a.start_at): a for a in extracted}.values())
     if not deduped:
         return deduped
 
@@ -80,23 +125,26 @@ def upsert_extracted_activities(
             db.add(source)
             db.flush()
 
-        urls = {a.source_url for a in deduped}
-        titles = {a.title for a in deduped}
-        start_times = {a.start_at for a in deduped}
-        existing_items = db.scalars(
-            select(Activity).where(
-                Activity.source_id == source.id,
-                Activity.source_url.in_(urls),
-                Activity.title.in_(titles),
-                Activity.start_at.in_(start_times),
+        identity_keys = list({(a.source_url, a.title, a.start_at) for a in deduped})
+        existing_items: list[Activity] = []
+        for key_chunk in _chunked(identity_keys, _UPSERT_BATCH_SIZE):
+            existing_items.extend(
+                db.scalars(
+                    select(Activity).where(
+                        Activity.source_id == source.id,
+                        tuple_(Activity.source_url, Activity.title, Activity.start_at).in_(key_chunk),
+                    )
+                ).all()
             )
-        ).all()
-        existing_by_key = {(a.source_url, a.title, a.start_at, a.end_at): a for a in existing_items}
+        existing_by_key = {(a.source_url, a.title, a.start_at): a for a in existing_items}
+
+        venues_by_key = _resolve_venues(db, deduped)
 
         for item in deduped:
-            key = (item.source_url, item.title, item.start_at, item.end_at)
+            key = (item.source_url, item.title, item.start_at)
             current = existing_by_key.get(key)
-            venue = _resolve_venue(db, item.venue_name, item.location_text, item.city, item.state)
+            venue_key = _venue_key_for(item.venue_name, item.location_text, item.city, item.state)
+            venue = venues_by_key.get(venue_key) if venue_key is not None else None
             if current is None:
                 db.add(
                     Activity(
