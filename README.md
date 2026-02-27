@@ -48,6 +48,19 @@ Ensure DB exists and schema is loaded (run in project root):
    - `cp .env.local.example .env.local`
    - `npm run dev`
 
+## Railway Crawler Guard
+- Use this as crawler service start command:
+  - `bash scripts/run_crawler_guarded.sh`
+- Required env var for guard:
+  - `RUN_CRAWLER=false` (default safe mode; crawler skips)
+- Optional env var to choose crawler job:
+  - `CRAWLER_COMMAND=python3 scripts/run_mfa_parser.py --commit`
+  - Example all-in-one command:
+    - `CRAWLER_COMMAND=python3 scripts/run_met_parser.py --commit && python3 scripts/run_moma_parser.py --commit && python3 scripts/run_whitney_parser.py --commit && python3 scripts/run_mfa_parser.py --commit`
+- To run only on cron:
+  - Keep `RUN_CRAWLER=false` for normal deploys.
+  - In Railway Cron trigger, set `RUN_CRAWLER=true` for that run (or toggle env before scheduled window and redeploy if using static envs).
+
 
 ## Current Status
 This scaffold includes:
