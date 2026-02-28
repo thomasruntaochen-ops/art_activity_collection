@@ -16,9 +16,10 @@ if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
 fi
 
 echo "Dependency check:"
-"${PYTHON_BIN}" - <<'PY'
+"${PYTHON_BIN}" -u - <<'PY'
 import importlib
 import platform
+import subprocess
 import sys
 
 packages = [
@@ -34,6 +35,14 @@ packages = [
 
 print(f"- python: {platform.python_version()}")
 print(f"- executable: {sys.executable}")
+try:
+    pip_version = subprocess.check_output(
+        [sys.executable, "-m", "pip", "--version"], text=True
+    ).strip()
+    print(f"- pip: {pip_version}")
+except Exception as exc:
+    print(f"- pip: MISSING ({exc})")
+
 for module_name, label in packages:
     try:
         mod = importlib.import_module(module_name)
