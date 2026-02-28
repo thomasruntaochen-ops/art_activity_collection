@@ -22,6 +22,7 @@ import platform
 import sys
 
 packages = [
+    ("sys", "sys"),
     ("fastapi", "fastapi"),
     ("sqlalchemy", "sqlalchemy"),
     ("pydantic", "pydantic"),
