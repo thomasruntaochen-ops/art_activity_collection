@@ -21,6 +21,7 @@ import importlib
 import platform
 import subprocess
 import sys
+import bs4
 
 packages = [
     ("sys", "sys"),
