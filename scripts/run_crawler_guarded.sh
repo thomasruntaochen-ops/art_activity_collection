@@ -5,10 +5,21 @@ set -euo pipefail
 # - If RUN_CRAWLER is not true, exit successfully without crawling.
 # - If true, execute CRAWLER_COMMAND (or a safe default).
 
+PYTHON_BIN="${PYTHON_BIN:-python}"
+if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
+  if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+  else
+    echo "No python interpreter found in PATH."
+    exit 1
+  fi
+fi
+
 echo "Dependency check:"
-python3 - <<'PY'
+"${PYTHON_BIN}" - <<'PY'
 import importlib
 import platform
+import sys
 
 packages = [
     ("fastapi", "fastapi"),
@@ -21,6 +32,7 @@ packages = [
 ]
 
 print(f"- python: {platform.python_version()}")
+print(f"- executable: {sys.executable}")
 for module_name, label in packages:
     try:
         mod = importlib.import_module(module_name)
@@ -35,7 +47,7 @@ if [[ "${RUN_CRAWLER:-false}" != "true" ]]; then
   exit 0
 fi
 
-CRAWLER_COMMAND_DEFAULT="python3 scripts/run_mfa_parser.py --commit"
+CRAWLER_COMMAND_DEFAULT="${PYTHON_BIN} scripts/run_mfa_parser.py --commit"
 CRAWLER_COMMAND="${CRAWLER_COMMAND:-$CRAWLER_COMMAND_DEFAULT}"
 
 echo "RUN_CRAWLER=true; executing: ${CRAWLER_COMMAND}"
