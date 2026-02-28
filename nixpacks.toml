@@ -3,6 +3,7 @@ nixPkgs = ["python312", "gcc"]
 
 [phases.install]
 cmds = [
+  "echo 'NIXPACKS INSTALL PHASE START'",
   "python -m pip install --upgrade pip",
   "pip install ."
 ]
